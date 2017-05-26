@@ -97,32 +97,24 @@ require(__dirname + '/components/user_registration.js')(controller);
 // Send an onboarding message when a new team joins
 require(__dirname + '/components/onboarding.js')(controller);
 
-// no longer necessary since slack now supports the always on event bots
-// // Set up a system to manage connections to Slack's RTM api
-// // This will eventually be removed when Slack fixes support for bot presence
-// var rtm_manager = require(__dirname + '/components/rtm_manager.js')(controller);
-//
-// // Reconnect all pre-registered bots
-// rtm_manager.reconnect();
-
-// Enable Dashbot.io plugin
-require(__dirname + '/components/plugin_dashbot.js')(controller);
-
-
-var normalizedPath = require("path").join(__dirname, "skills");
-require("fs").readdirSync(normalizedPath).forEach(function(file) {
-  require("./skills/" + file)(controller);
-});
 
 var ConversationV1 = require('watson-developer-cloud/conversation/v1');
+var Middleware = require('botkit-middleware-watson');
 
 // Set up Conversation service wrapper.
 var conversation = new ConversationV1({
-    username: process.env.WATSON_CONVERSATION_USERNAME, // replace with username from service key
-    password: process.env.WATSON_CONVERSATION_PASSWORD, // replace with password from service key
-    path: { workspace_id: process.env.WATSON_CONVERSATION_WORKSPACE_ID }, // replace with workspace ID
+    username: process.env.WATSON_CONVERSATION_USERNAME,
+    password: process.env.WATSON_CONVERSATION_PASSWORD,
+    path: { workspace_id: process.env.WATSON_CONVERSATION_WORKSPACE_ID },
     version_date: process.env.WATSON_CONVERSATION_VERSION_DATE
 });
+var middleware = new Middleware({
+    username: process.env.WATSON_CONVERSATION_USERNAME,
+    password: process.env.WATSON_CONVERSATION_PASSWORD,
+    workspace_id: process.env.WATSON_CONVERSATION_WORKSPACE_ID,
+    version_date: process.env.WATSON_CONVERSATION_VERSION_DATE
+});
+
 // Start conversation with empty message.
 conversation.message({}, processResponse);
 
@@ -133,26 +125,18 @@ function processResponse(err, response) {
         return;
     }
 
-    // If an intent was detected, log it out to the console.
-    if (response.intents.length > 0) {
-        console.log('Detected intent: #' + response.intents[0].intent);
-    }
-
     // Display the output from dialog, if any.
     if (response.output.text.length != 0) {
         console.log(response.output.text[0]);
     }
-
-    // Prompt for the next round of input.
-    var newMessageFromUser = prompt('>> ');
-    conversation.message({
-        input: { text: newMessageFromUser }
-    }, processResponse)
 }
-controller.on('direct_message,direct_mention,mention', function(bot, message) {
-    if(message == 'hello'){
-        bot.reply(message,'Response to hello!');
-    }
+
+controller.hears(['.*'], ['direct_message', 'direct_mention', 'mention'], function(bot, message) {
+    controller.log('Slack message received');
+    middleware.interpret(bot, message, function(err) {
+        if (!err)
+            bot.reply(message, message.watsonData.output.text.join('\n'));
+    });
 });
 
 // This captures and evaluates any message sent to the bot as a DM
@@ -186,16 +170,3 @@ controller.on('direct_message,direct_mention,mention', function(bot, message) {
 //     console.log('NOTE: Botkit Studio functionality has not been enabled');
 //     console.log('To enable, pass in a studio_token parameter with a token from https://studio.botkit.ai/');
 // }
-
-
-
-
-function usage_tip() {
-    console.log('~~~~~~~~~~');
-    console.log('Botkit Starter Kit');
-    console.log('Execute your bot application like this:');
-    console.log('clientId=<MY SLACK CLIENT ID> clientSecret=<MY CLIENT SECRET> PORT=3000 studio_token=<MY BOTKIT STUDIO TOKEN> node bot.js');
-    console.log('Get Slack app credentials here: https://api.slack.com/apps')
-    console.log('Get a Botkit Studio token here: https://studio.botkit.ai/')
-    console.log('~~~~~~~~~~');
-}
