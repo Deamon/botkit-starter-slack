@@ -57,7 +57,7 @@ env(__dirname + '/.env');
 
 if (!process.env.clientId || !process.env.clientSecret || !process.env.PORT) {
   console.log('Error: Specify clientId clientSecret and PORT in environment');
-  usage_tip();
+  // usage_tip();
   process.exit(1);
 }
 
@@ -116,36 +116,60 @@ require("fs").readdirSync(normalizedPath).forEach(function(file) {
 
 var ConversationV1 = require('watson-developer-cloud/conversation/v1');
 
+// Set up Conversation service wrapper.
+var conversation = new ConversationV1({
+    username: process.env.WATSON_CONVERSATION_USERNAME, // replace with username from service key
+    password: process.env.WATSON_CONVERSATION_PASSWORD, // replace with password from service key
+    path: { workspace_id: process.env.WATSON_CONVERSATION_WORKSPACE_ID }, // replace with workspace ID
+    version_date: process.env.WATSON_CONVERSATION_VERSION_DATE
+});
+// Start conversation with empty message.
+conversation.message({}, processResponse);
+
+// Process the conversation response.
+function processResponse(err, response) {
+    if (err) {
+        console.error(err); // something went wrong
+        return;
+    }
+
+    // Display the output from dialog, if any.
+    if (response.output.text.length != 0) {
+        console.log(response.output.text[0]);
+    }
+}
+
 // This captures and evaluates any message sent to the bot as a DM
 // or sent to the bot in the form "@bot message" and passes it to
 // Botkit Studio to evaluate for trigger words and patterns.
 // If a trigger is matched, the conversation will automatically fire!
 // You can tie into the execution of the script using the functions
 // controller.studio.before, controller.studio.after and controller.studio.validate
-if (process.env.studio_token) {
-    controller.on('direct_message,direct_mention,mention', function(bot, message) {
-        controller.studio.runTrigger(bot, message.text, message.user, message.channel).then(function(convo) {
-            if (!convo) {
+// if (process.env.studio_token) {
+//     controller.on('direct_message,direct_mention,mention', function(bot, message) {
+
+        // controller.studio.runTrigger(bot, message.text, message.user, message.channel).then(function(convo) {
+        //     if (!convo) {
                 // no trigger was matched
                 // If you want your bot to respond to every message,
                 // define a 'fallback' script in Botkit Studio
                 // and uncomment the line below.
                 // controller.studio.run(bot, 'fallback', message.user, message.channel);
-            } else {
+            // } else {
                 // set variables here that are needed for EVERY script
                 // use controller.studio.before('script') to set variables specific to a script
-                convo.setVar('current_time', new Date());
-            }
-        }).catch(function(err) {
-            bot.reply(message, 'I experienced an error with a request to Botkit Studio: ' + err);
-            debug('Botkit Studio: ', err);
-        });
-    });
-} else {
-    console.log('~~~~~~~~~~');
-    console.log('NOTE: Botkit Studio functionality has not been enabled');
-    console.log('To enable, pass in a studio_token parameter with a token from https://studio.botkit.ai/');
-}
+                // convo.setVar('current_time', new Date());
+            // }
+        // }).catch(function(err) {
+        //     bot.reply(message, 'I experienced an error with a request to Botkit Studio: ' + err);
+        //     debug('Botkit : ', err);
+        // });
+    // });
+// } else {
+//     console.log('~~~~~~~~~~');
+//     console.log('NOTE: Botkit Studio functionality has not been enabled');
+//     console.log('To enable, pass in a studio_token parameter with a token from https://studio.botkit.ai/');
+// }
 
 
 
