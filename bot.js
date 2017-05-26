@@ -133,11 +133,27 @@ function processResponse(err, response) {
         return;
     }
 
+    // If an intent was detected, log it out to the console.
+    if (response.intents.length > 0) {
+        console.log('Detected intent: #' + response.intents[0].intent);
+    }
+
     // Display the output from dialog, if any.
     if (response.output.text.length != 0) {
         console.log(response.output.text[0]);
     }
+
+    // Prompt for the next round of input.
+    var newMessageFromUser = prompt('>> ');
+    conversation.message({
+        input: { text: newMessageFromUser }
+    }, processResponse)
 }
+controller.on('direct_message,direct_mention,mention', function(bot, message) {
+    if(message == 'hello'){
+        bot.reply(message,'Response to hello!');
+    }
+});
 
 // This captures and evaluates any message sent to the bot as a DM
 // or sent to the bot in the form "@bot message" and passes it to
